@@ -1,0 +1,3 @@
+[submodule "Harbourfront/YakuEngine"]
+	path = Harbourfront/YakuEngine
+	url = https://github.com/Spratley/YakuEngine.git
