@@ -6,5 +6,5 @@ include(${CMAKE_SOURCE_DIR}/YakuEngine/CMake/CommonSettings.cmake)
 
 # Add projects
 # Make sure new projects are included here
-add_subdirectory(YakuEngine)
-add_subdirectory(HFGame)
+add_subdirectory(YakuEngine ${CMAKE_SOURCE_DIR}/YakuEngine)
+add_subdirectory(HFGame ${CMAKE_SOURCE_DIR}/HFGame)

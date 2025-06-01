@@ -1,5 +1,3 @@
-project(HFGame LANGUAGES CXX)
-
 # Create the application
 add_executable(HFGame)
 set_target_properties(HFGame PROPERTIES OUTPUT_NAME "Harbourfront")

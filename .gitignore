@@ -407,3 +407,5 @@ FodyWeavers.xsd
 
 # Custom Exclusions
 Generated/
+*.vcxproj
+*.vcxproj.filters
