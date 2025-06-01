@@ -23,5 +23,13 @@ target_sources(HFGame PUBLIC ${GAME_SOURCES})
 # Link to engine lib
 target_link_libraries(HFGame PRIVATE YakuEngine)
 
+# Setup Precompiled Headers
+set(PCH_HEADER "HFGame_PCH.h")
+set(PCH_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/PCH/HFGame_PCH.cpp")
+set(PCH_OUTPUT "${CMAKE_BINARY_DIR}/PCH/HFGame.pch")
+set_source_files_properties(${PCH_SOURCE} PROPERTIES COMPILE_FLAGS "/Yc${PCH_HEADER} /Fp${PCH_OUTPUT}")
+target_compile_options(HFGame PRIVATE "/YuPCH/${PCH_HEADER}" "/Fp${PCH_OUTPUT}")
+
+
 #Project Settings
 include(${CMAKE_SOURCE_DIR}/YakuEngine/CMake/CommonSettings.cmake)

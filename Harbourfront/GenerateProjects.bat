@@ -1,4 +1,4 @@
-@echo off
+
 set OUTPUT_DIR=Generated
 set INSTALL_DIR=%CD%\install
 set GENERATOR="Visual Studio 17 2022"
