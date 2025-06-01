@@ -1,0 +1,8 @@
+set OUTPUT_DIR=Generated
+set INSTALL_DIR=%CD%\install
+set GENERATOR="Visual Studio 17 2022"
+set CONFIG_TYPES="Debug;Release"
+
+if not exist %OUTPUT_DIR% mkdir %OUTPUT_DIR%
+cd %OUTPUT_DIR%
+cmake -G %GENERATOR% -DCMAKE_CONFIGURATION_TYPES=%CONFIG_TYPES% -DCMAKE_INSTALL_PREFIX=%INSTALL_DIR% ..\
