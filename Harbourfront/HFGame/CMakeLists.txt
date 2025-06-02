@@ -30,6 +30,5 @@ set(PCH_OUTPUT "${CMAKE_BINARY_DIR}/PCH/HFGame.pch")
 set_source_files_properties(${PCH_SOURCE} PROPERTIES COMPILE_FLAGS "/Yc${PCH_HEADER} /Fp${PCH_OUTPUT}")
 target_compile_options(HFGame PRIVATE "/YuPCH/${PCH_HEADER}" "/Fp${PCH_OUTPUT}")
 
-
 #Project Settings
 include(${CMAKE_SOURCE_DIR}/YakuEngine/CMake/CommonSettings.cmake)
