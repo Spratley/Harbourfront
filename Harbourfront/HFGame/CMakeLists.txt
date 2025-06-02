@@ -1,34 +1,3 @@
-# Create the application
-add_executable(HFGame)
-set_target_properties(HFGame PROPERTIES OUTPUT_NAME "Harbourfront")
-
-# Gather all code files
-file(GLOB_RECURSE GAME_SOURCES CONFIGURE_DEPENDS
-	${CMAKE_CURRENT_SOURCE_DIR}/*.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/*.h
-	${CMAKE_CURRENT_SOURCE_DIR}/*.hpp
-	${CMAKE_CURRENT_SOURCE_DIR}/*.inl
-)
-
-# Generate filters for folders
-foreach(source_file ${GAME_SOURCES})
-	file(RELATIVE_PATH relative_path "${CMAKE_CURRENT_SOURCE_DIR}" "${source_file}")
-	get_filename_component(source_path "${relative_path}" PATH)
-	string(REPLACE "/" "\\" filter_path "${source_path}")
-	source_group("${filter_path}" FILES "${source_file}")
-endforeach()
-
-target_sources(HFGame PUBLIC ${GAME_SOURCES})
-
-# Link to engine lib
-target_link_libraries(HFGame PRIVATE YakuEngine)
-
-# Setup Precompiled Headers
-set(PCH_HEADER "HFGame_PCH.h")
-set(PCH_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/PCH/HFGame_PCH.cpp")
-set(PCH_OUTPUT "${CMAKE_BINARY_DIR}/PCH/HFGame.pch")
-set_source_files_properties(${PCH_SOURCE} PROPERTIES COMPILE_FLAGS "/Yc${PCH_HEADER} /Fp${PCH_OUTPUT}")
-target_compile_options(HFGame PRIVATE "/YuPCH/${PCH_HEADER}" "/Fp${PCH_OUTPUT}")
-
-#Project Settings
-include(${CMAKE_SOURCE_DIR}/YakuEngine/CMake/CommonSettings.cmake)
+include(${CMAKE_SOURCE_DIR}/YakuEngine/CMake/CommonFunctions.cmake)
+yaku_executable(HFGame Harbourfront)
+yaku_link(HFGame PRIVATE YakuEngine)
