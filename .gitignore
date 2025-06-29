@@ -409,3 +409,4 @@ FodyWeavers.xsd
 Generated/
 *.vcxproj
 *.vcxproj.filters
+*.dir/
