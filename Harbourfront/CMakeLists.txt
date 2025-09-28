@@ -3,6 +3,7 @@ project(Harbourfront)
 
 include(${CMAKE_SOURCE_DIR}/YakuEngine/CMake/CommonFunctions.cmake)
 yaku_solution(Harbourfront)
+yaku_clang_copy()
 
 # Add projects
 # Make sure new projects & modules are included here
@@ -16,3 +17,6 @@ yaku_startup(HFGame)
 
 # Set configurations
 yaku_config_projects(HFGame CG YakuEngine YakuCore)
+
+# End setup
+yaku_post_generation()

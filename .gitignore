@@ -410,3 +410,6 @@ Generated/
 *.vcxproj
 *.vcxproj.filters
 *.dir/
+*cmake_install.cmake
+*CMakeFiles/
+*.clang-format
