@@ -3,6 +3,6 @@
 class HF_Game
 {
 public:
-	bool Init() { return true; }
-	void ShutDown() {} 
+    bool Init() { return true; }
+    void ShutDown() {}
 };
