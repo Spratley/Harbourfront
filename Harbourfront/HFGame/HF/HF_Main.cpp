@@ -12,6 +12,6 @@ int WinMain()
 int main()
 #endif // YAKU_RETAIL
 {
-	engine.Run<HF_Game>();
-	return 0;
+    engine.Run<HF_Game>();
+    return 0;
 }
