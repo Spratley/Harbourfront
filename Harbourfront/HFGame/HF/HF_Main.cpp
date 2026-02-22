@@ -6,7 +6,9 @@
 
 YakuEngine engine;
 
-#if YAKU_RETAIL
+// TODO: Don't depend on Windows here
+// Main signature should be in some Yaku Engine define
+#if YAKU_RETAIL && YK_Windows
 int WinMain()
 #else
 int main()
