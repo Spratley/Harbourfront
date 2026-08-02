@@ -1,10 +1,11 @@
 #include "PCH/HFGame_PCH.h"
 
+#include "ECS/HF_ECSRegistry.h"
 #include "Game/HF_Game.h"
 
 #include "YK/YakuEngine.h"
 
-YakuEngine engine;
+YakuEngine engine(HF_ComponentTypes{}, HF_SystemTypes{});
 
 // TODO: Don't depend on Windows here
 // Main signature should be in some Yaku Engine define
