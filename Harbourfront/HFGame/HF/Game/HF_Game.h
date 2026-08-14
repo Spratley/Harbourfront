@@ -1,8 +1,10 @@
 #pragma once
 
+class YakuEngine;
+
 class HF_Game
 {
 public:
-    bool Init() { return true; }
+    bool Init(YakuEngine& p_engine);
     void ShutDown() {}
 };
