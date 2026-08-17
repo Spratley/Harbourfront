@@ -32,7 +32,7 @@ bool HF_Game::Init(YakuEngine& p_engine)
     player.GetComponent<CG_RendererComponent>()->m_material = &g_heartMaterial2;
 
     g_mainShader2 = new CG_Shader(CG_ShaderLoader::Load("J:/Harbourfront/Data/Shaders/ShaderCode/Vertex.vs",
-                                                       "J:/Harbourfront/Data/Shaders/ShaderCode/Fragment.fs"));
+                                                        "J:/Harbourfront/Data/Shaders/ShaderCode/Fragment.fs"));
 
     g_heartMaterial2.m_shader = g_mainShader2;
     g_heartMaterial2.m_texture = CG_TextureFactory::LoadPNG("J:/Harbourfront/Data/Textures/HeartTest.png");
