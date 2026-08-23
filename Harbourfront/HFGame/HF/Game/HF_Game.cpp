@@ -2,8 +2,8 @@
 #include "HF_Game.h"
 
 #include "HF/ECS/HF_Temp_PlayerComponent.h"
+#include "HF/ECS/HF_Temp_BobbingComponent.h"
 
-#include "EN/ECS/EN_TEST_BobbingComponent.h"
 #include "EN/Libraries/HIDra/HIDra.h"
 #include "EN/YakuEngine.h"
 
@@ -69,7 +69,7 @@ bool HF_Game::Init(YK_Core& p_engine)
         YK_Unused(i);
 
         Zen::Entity bobber =
-          entityGarden.Spawn<YK_TransformComponent, CG_MeshComponent, CG_RendererComponent, BobbingComponent>();
+          entityGarden.Spawn<YK_TransformComponent, CG_MeshComponent, CG_RendererComponent, HF_BobbingComponent>();
         YK_TransformComponent* bobberTransform = bobber.GetComponent<YK_TransformComponent>();
 
         float x = GetRandomFloat(10.0f) - 5.0f;
@@ -78,7 +78,7 @@ bool HF_Game::Init(YK_Core& p_engine)
         bobberTransform->m_position = YK_Vector3f(x, y, z);
 
         float bobOffset = GetRandomFloat(10.0f);
-        bobber.GetComponent<BobbingComponent>()->m_phase = bobOffset;
+        bobber.GetComponent<HF_BobbingComponent>()->m_phase = bobOffset;
 
         bobber.GetComponent<CG_MeshComponent>()->m_mesh = &heartMesh;
         bobber.GetComponent<CG_RendererComponent>()->m_material = &heartMaterial;
