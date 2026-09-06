@@ -23,12 +23,11 @@
 #include "CG/2D/Canvas/CG_Canvas.h"
 #include "CG/CG_RenderModule.h"
 #include "CG/Camera/CG_CameraComponent.h"
-#include "CG/Renderable/CG_Renderable.h"
+#include "CG/ECS/CG_Components.h"
 #include "CG/Resource/Material/CG_Material.h"
 #include "CG/Resource/Mesh/CG_Mesh.h"
 #include "CG/Resource/Mesh/CG_MeshFactory.h"
 
-#include "YK/ECS/Components/YK_TransformComponent.h"
 #include "EN/Libraries/HIDra/HIDra.h"
 #include "EN/Libraries/HIDra/HIDraEnums.h"
 #include "EN/Libraries/HIDra/HIDraTypes.h"
