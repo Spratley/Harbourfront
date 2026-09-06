@@ -7,8 +7,8 @@
 
 namespace HF_ECSRegistry
 {
-    using ComponentTypes = Zen::TypeList<HF_PlayerComponent, HF_BobbingComponent>;
-    using SystemTypes = Zen::TypeList<HF_PlayerSystem, HF_BobbingSystem>;
+    using ComponentTypes = Zen::TypeList<HF_PlayerComponent, HF_BobbingComponent, HF_MovingOutComponent>;
+    using SystemTypes = Zen::TypeList<HF_PlayerSystem, HF_BobbingSystem, HF_MovingOutSystem>;
 } // namespace HF_ECSRegistry
 
 using HF_ComponentTypes = Zen::TypeListUtils::Concat_T<EN_ComponentTypes, HF_ECSRegistry::ComponentTypes>;

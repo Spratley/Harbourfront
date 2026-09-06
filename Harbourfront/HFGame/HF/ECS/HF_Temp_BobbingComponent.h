@@ -22,3 +22,20 @@ struct HF_BobbingSystem : public Zen::SystemBase<HF_BobbingSystem, YK_TransformC
         }
     }
 };
+
+struct HF_MovingOutComponent
+{
+    YK_Vector3f m_randomDirection;
+};
+
+struct HF_MovingOutSystem : public Zen::SystemBase<HF_MovingOutSystem, HF_MovingOutComponent, YK_TransformComponent>
+{
+    static void Tick(ComponentView const& p_components)
+    {
+        float const deltaTime = YK_Time::DeltaTime();
+        for (auto [moving, transform] : p_components)
+        {
+            transform.m_position += moving.m_randomDirection * deltaTime;
+        }
+    }
+};

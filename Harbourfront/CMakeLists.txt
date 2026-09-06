@@ -9,6 +9,7 @@ yaku_clang_copy()
 # Make sure new projects & modules are included here
 yaku_subproject_dir(YakuEngine/Core)
 yaku_subproject_dir(YakuEngine/Modules/CG)
+yaku_subproject_dir(YakuEngine/Modules/PPhys)
 yaku_subproject_dir(YakuEngine/Engine)
 yaku_subproject(HFGame)
 
@@ -16,7 +17,7 @@ yaku_subproject(HFGame)
 yaku_startup(HFGame)
 
 # Set configurations
-yaku_config_projects(HFGame CG YakuEngine YakuCore)
+yaku_config_projects(HFGame CG PPhys YakuEngine YakuCore)
 
 # End setup
 yaku_post_generation()

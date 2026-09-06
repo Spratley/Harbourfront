@@ -5,6 +5,8 @@
 
 #include "EN/YakuEngine.h"
 
+#include "YK/EngineSystem/YK_EngineSystemManager.h"
+
 YakuEngine engine(HF_ComponentTypes{}, HF_SystemTypes{});
 
 // TODO: Don't depend on Windows here
