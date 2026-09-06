@@ -2,7 +2,6 @@
 
 class YK_Core;
 
-// TODO Migrate out of this
 class HF_Game
 {
 public:

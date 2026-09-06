@@ -2,12 +2,10 @@
 #include "HF_Game.h"
 
 #include "YK/Core/YK_Core.h"
-#include "YK/Debugging/YK_Assert.h"
 #include "YK/ECS/Components/YK_TransformComponent.h"
 #include "YK/IO/Asset/YK_AssetManager.h"
 #include "YK/IO/File/YK_FilePath.h"
 #include "YK/Libraries/Zen/Entity/Zen_Entity.h"
-#include "YK/Libraries/Zen/Utils/Zen_LoopUtils.h"
 #include "YK/Libraries/Zen/Zen_Garden.h"
 #include "YK/Math/YK_MatrixMath.h"
 #include "YK/Math/YK_NumericLimits.h"
@@ -16,7 +14,6 @@
 #include "YK/Types/Math/YK_Integer.h"
 #include "YK/Types/Math/YK_Quaternion.h"
 #include "YK/Types/Math/YK_Vector.h"
-#include "YK/Utils/YK_MemoryUtils.h"
 
 #include "PP/ECS/PP_RigidBodyComponent.h"
 
@@ -33,9 +30,6 @@
 #include "EN/Libraries/HIDra/HIDraTypes.h"
 #include "EN/Modules/EN_ModuleRegistry.h"
 #include "EN/YakuEngine.h"
-
-#include "HF/ECS/HF_Temp_BobbingComponent.h"
-#include "HF/ECS/HF_Temp_PlayerComponent.h"
 
 #include <Jolt/Jolt.h>
 #include "PP/Libraries/Jolt/Physics/Collision/Shape/BoxShape.h"
@@ -59,7 +53,7 @@ auto GetRandomFloat = [](float p_max) {
 std::vector<Zen::Entity> g_moverEntities;
 void Temp_SpawnMover()
 {
-    YK_Core& engine = YK_Core::GetEngine();
+    YakuEngine& engine = YakuEngine::GetEngine();
     YK_AssetManager& assetManager = engine.GetAssetManager();
     Zen::Garden& entityGarden = engine.GetZenGarden();
 
@@ -94,6 +88,7 @@ void HF_Game::Init(YK_Core& p_engine)
     camera->m_fov = 60.0f;
     camera->m_nearPlane = 0.1f;
     camera->m_farPlane = 100.0f;
+    static_cast<YakuEngine&>(p_engine).GetModules().GetRenderModule().SetActiveCamera(*camera);
 
     // Gather Assets for Spawning
     CG_Mesh const& heartMesh = assetManager.GetAsset<CG_Mesh>(YK_FilePath("Models/HeartTest.obj"));
@@ -113,28 +108,7 @@ void HF_Game::Init(YK_Core& p_engine)
     groundPlane.GetComponent<CG_MeshComponent>()->m_mesh = &g_quadMesh;
     groundPlane.GetComponent<CG_RendererComponent>()->m_material = &groundMaterial;
 
-    for (auto i : Zen::LoopUtils::CountTo(0))
-    {
-        YK_Unused(i);
-
-        Zen::Entity bobber =
-          entityGarden.Spawn<YK_TransformComponent, CG_MeshComponent, CG_RendererComponent, HF_BobbingComponent>();
-        YK_TransformComponent* bobberTransform = bobber.GetComponent<YK_TransformComponent>();
-
-        float x = GetRandomFloat(10.0f) - 5.0f;
-        float y = GetRandomFloat(10.0f) - 5.0f;
-        float z = GetRandomFloat(10.0f) - 5.0f;
-        bobberTransform->m_position = YK_Vector3f(x, y, z);
-
-        float bobOffset = GetRandomFloat(10.0f);
-        bobber.GetComponent<HF_BobbingComponent>()->m_phase = bobOffset;
-
-        bobber.GetComponent<CG_MeshComponent>()->m_mesh = &heartMesh;
-        bobber.GetComponent<CG_RendererComponent>()->m_material = &heartMaterial;
-    }
-
-    Zen::Entity player =
-      entityGarden.Spawn<YK_TransformComponent, CG_MeshComponent, CG_RendererComponent, HF_PlayerComponent>();
+    Zen::Entity player = entityGarden.Spawn<YK_TransformComponent, CG_MeshComponent, CG_RendererComponent>();
 
     player.GetComponent<CG_MeshComponent>()->m_mesh = &heartMesh;
     player.GetComponent<CG_RendererComponent>()->m_material = &heartMaterial;
