@@ -21,9 +21,13 @@
 #include "CG/CG_RenderModule.h"
 #include "CG/Camera/CG_CameraComponent.h"
 #include "CG/ECS/CG_Components.h"
+#include "CG/Resource/Animation/CG_Animation.h"
 #include "CG/Resource/Material/CG_Material.h"
 #include "CG/Resource/Mesh/CG_Mesh.h"
 #include "CG/Resource/Mesh/CG_MeshFactory.h"
+#include "CG/Resource/Skeleton/CG_Skeleton.h"
+
+#include "AM/ECS/AM_AnimationComponent.h"
 
 #include "EN/Libraries/HIDra/HIDra.h"
 #include "EN/Libraries/HIDra/HIDraEnums.h"
@@ -65,7 +69,7 @@ void Temp_SpawnMover()
 
     Zen::Entity mover = entityGarden.Spawn(
       std::move(transform),
-      CG_MeshComponent{ .m_mesh = &assetManager.GetAsset<CG_Mesh>(YK_FilePath("Models/HeartTest.obj")) },
+      CG_MeshComponent{ .m_mesh = &assetManager.GetAsset<CG_Mesh>(YK_FilePath("Models/Debugger.glb")) },
       CG_RendererComponent{ .m_material = &assetManager.GetAsset<CG_Material>(YK_FilePath("Materials/Main.YKM")) },
       PP_RigidBodyComponent{ new JPH::SphereShape(0.5f), transform, PP_BodyType::Dynamic });
 
@@ -91,10 +95,9 @@ void HF_Game::Init(YK_Core& p_engine)
     static_cast<YakuEngine&>(p_engine).GetModules().GetRenderModule().SetActiveCamera(*camera);
 
     // Gather Assets for Spawning
-    CG_Mesh const& heartMesh = assetManager.GetAsset<CG_Mesh>(YK_FilePath("Models/HeartTest.obj"));
     g_quadMesh = CG_MeshFactory::Quad();
 
-    CG_Material const& heartMaterial = assetManager.GetAsset<CG_Material>(YK_FilePath("Materials/Main.YKM"));
+    // CG_Material const& heartMaterial = assetManager.GetAsset<CG_Material>(YK_FilePath("Materials/Main.YKM"));
     CG_Material const& groundMaterial = assetManager.GetAsset<CG_Material>(YK_FilePath("Materials/Ground.YKM"));
 
     std::srand(static_cast<unsigned int>(time(NULL)));
@@ -108,10 +111,26 @@ void HF_Game::Init(YK_Core& p_engine)
     groundPlane.GetComponent<CG_MeshComponent>()->m_mesh = &g_quadMesh;
     groundPlane.GetComponent<CG_RendererComponent>()->m_material = &groundMaterial;
 
-    Zen::Entity player = entityGarden.Spawn<YK_TransformComponent, CG_MeshComponent, CG_RendererComponent>();
+    Zen::Entity player = entityGarden.Spawn<YK_TransformComponent,
+                                            CG_SkeletalMeshComponent,
+                                            CG_RendererComponent,
+                                            CG_PoseComponent,
+                                            AM_AnimationComponent>();
 
-    player.GetComponent<CG_MeshComponent>()->m_mesh = &heartMesh;
-    player.GetComponent<CG_RendererComponent>()->m_material = &heartMaterial;
+    YK_TransformComponent* playerTransform = player.GetComponent<YK_TransformComponent>();
+    playerTransform->m_position -= YK_Vector3f::Forward() * 3.5f;
+
+    CG_SkeletalMeshComponent* skeletalMesh = player.GetComponent<CG_SkeletalMeshComponent>();
+    skeletalMesh->m_mesh = &assetManager.GetAsset<CG_Mesh>(YK_FilePath("Models/Debugger.glb"));
+    skeletalMesh->m_skeleton = &assetManager.GetAsset<CG_Skeleton>(YK_FilePath("Models/Debugger.glb"));
+
+    player.GetComponent<CG_RendererComponent>()->m_material =
+      &assetManager.GetAsset<CG_Material>(YK_FilePath("Materials/MainSkeletal.YKM"));
+
+    player.GetComponent<CG_PoseComponent>()->m_pose.resize(skeletalMesh->m_skeleton->m_bones.size());
+
+    player.GetComponent<AM_AnimationComponent>()->m_animation =
+      &assetManager.GetAsset<CG_Animation>(YK_FilePath("Models/Debugger.glb"));
 
     // Spawn ground collider
     YK_TransformComponent groundCollider;
@@ -193,7 +212,7 @@ void HF_Game::Update(YK_Core& p_engine)
     if (timeSinceLastSpawn > 1.0f && g_moverEntities.size() < 10)
     {
         timeSinceLastSpawn = 0.0f;
-        Temp_SpawnMover();
+        //    Temp_SpawnMover();
     }
 
     Zen::Garden& entityGarden = p_engine.GetZenGarden();
