@@ -47,9 +47,6 @@
 // Temp
 CG_Mesh g_quadMesh;
 
-CG_Animation const* g_hammerAnim;
-CG_Animation const* g_idleAnim;
-
 YK_DeferredConstructible<HF_Player> HF_Game::m_player;
 
 void HF_Game::Init(YK_Core& p_engine)

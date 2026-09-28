@@ -5,6 +5,7 @@
 #include "YK/IO/Asset/YK_AssetManager.h"
 #include "YK/IO/File/YK_FilePath.h"
 #include "YK/Libraries/Zen/Zen_Garden.h"
+#include "YK/Math/YK_MathUtils.h"
 #include "YK/Math/YK_VectorMath.h"
 #include "YK/Time/YK_Time.h"
 #include "YK/Types/Math/YK_Quaternion.h"
@@ -33,37 +34,43 @@ namespace HF_Player_Private
     CG_Animation const* IdleAnimation;
     CG_Animation const* HammerJumpAnimation;
 
-    // Not good
-    void PollInput(float& p_outRaise,
-                   HIDra::Vec2f& p_outDPad,
-                   HIDra::Vec2f& p_outLeftStick,
-                   HIDra::Vec2f& p_outRightStick)
+    // This should be ideally loaded from some data path
+    // I don't have a mechanism to do that in YakuEn yet
+    constexpr float CameraHeight = 2.0f;
+    constexpr float CameraDistance = 7.0f;
+
+    constexpr float CameraPanSpeedMin = 1.0f;
+    constexpr float CameraPanSpeedMax = 3.0f;
+    constexpr float CameraPanAccelerationDuration = 1.0f / 2.0f;
+    constexpr float CameraPanAccelerationStartTime = 0.25f;
+
+    YK_Vector3f UpdateCamera(CG_CameraComponent& p_camera, YK_TransformComponent& p_playerTransform)
     {
-        p_outRaise = HIDra::GetButton(HIDra::BID_BUMPER_L) ? -1.0f :
-                     HIDra::GetButton(HIDra::BID_BUMPER_R) ? 1.0f :
-                                                             0.0f;
+        HIDra::Vec2f rightStick = HIDra::GetAxis2D(HIDra::AID_STICK_R);
+        // TODO: Integrate "Time since input started" directly into HIDra
+        static float timeSinceRightStickInput = 0.0f;
+        float const deltaTime = YK_Time::DeltaTime();
+        if (rightStick.m_x == 0.0f) // Float comparisons :')
+        {
+            timeSinceRightStickInput = 0.0f;
+        }
+        else
+        {
+            timeSinceRightStickInput += deltaTime;
+        }
+        float const cameraPanLerp =
+          (timeSinceRightStickInput - CameraPanAccelerationStartTime) * CameraPanAccelerationDuration;
+        float const cameraPanSpeed = YK_LerpClamped(CameraPanSpeedMin, CameraPanSpeedMax, cameraPanLerp);
 
-        p_outDPad = { 0.0f, 0.0f };
-        if (HIDra::GetKey(HIDra::KEYCODE_S) || HIDra::GetButton(HIDra::BID_DPAD_SOUTH))
-        {
-            p_outDPad.m_y = -1;
-        }
-        else if (HIDra::GetKey(HIDra::KEYCODE_W) || HIDra::GetButton(HIDra::BID_DPAD_NORTH))
-        {
-            p_outDPad.m_y = 1;
-        }
+        p_camera.m_transform.m_orientation *=
+          YK_Quaternion(YK_Vector3f::Up(), -rightStick.m_x * deltaTime * cameraPanSpeed);
 
-        if (HIDra::GetKey(HIDra::KEYCODE_A) || HIDra::GetButton(HIDra::BID_DPAD_WEST))
-        {
-            p_outDPad.m_x = -1;
-        }
-        else if (HIDra::GetKey(HIDra::KEYCODE_D) || HIDra::GetButton(HIDra::BID_DPAD_EAST))
-        {
-            p_outDPad.m_x = 1;
-        }
+        YK_Vector3f const cameraForward2D = p_camera.m_transform.Forward2D();
+        p_camera.m_transform.m_position = p_playerTransform.m_position;
+        p_camera.m_transform.m_position += YK_Vector3f::Up() * CameraHeight;
+        p_camera.m_transform.m_position += cameraForward2D * CameraDistance;
 
-        p_outLeftStick = HIDra::GetAxis2D(HIDra::AID_STICK_L);
-        p_outRightStick = HIDra::GetAxis2D(HIDra::AID_STICK_R);
+        return cameraForward2D;
     }
 
 } // namespace HF_Player_Private
@@ -118,25 +125,14 @@ HF_Player::~HF_Player()
 
 void HF_Player::Update()
 {
-    float const deltaTime = YK_Time::DeltaTime();
     CG_CameraComponent* const camera = m_playerEntity.GetComponent<CG_CameraComponent>();
     YK_TransformComponent* const playerTransform = m_playerEntity.GetComponent<YK_TransformComponent>();
     AM_AnimationComponent* const animationComponent = m_playerEntity.GetComponent<AM_AnimationComponent>();
 
-    float raise = 0.0f;
-    HIDra::Vec2f dpad;
-    HIDra::Vec2f leftStick;
-    HIDra::Vec2f rightStick;
-    HF_Player_Private::PollInput(raise, dpad, leftStick, rightStick);
-
-    YK_Vector3f const cameraForward2D = camera->m_transform.Forward2D();
+    YK_Vector3f const cameraForward2D = HF_Player_Private::UpdateCamera(*camera, *playerTransform);
     YK_Vector3f const cameraRight = YK_Vector::Cross(YK_Vector3f::Up(), cameraForward2D);
 
-    YK_Vector3f cameraMovementDelta =
-      (cameraRight * dpad.m_x) + (cameraForward2D * -dpad.m_y) + (YK_Vector3f(0.0f, raise, 0.0f));
-    cameraMovementDelta *= deltaTime * 2.0f;
-    camera->m_transform.m_position += cameraMovementDelta;
-    camera->m_transform.m_orientation = camera->m_transform.m_orientation * YK_Quaternion(YK_Vector3f::Up(), -rightStick.m_x * deltaTime);
+    HIDra::Vec2f leftStick = HIDra::GetAxis2D(HIDra::AID_STICK_L);
 
     playerTransform->m_position +=
       (cameraForward2D * -leftStick.m_y + cameraRight * leftStick.m_x) * YK_Time::DeltaTime() * 5.0f;
