@@ -39,8 +39,8 @@ namespace HF_Player_Private
     constexpr float CameraHeight = 2.0f;
     constexpr float CameraDistance = 7.0f;
 
-    constexpr float CameraPanSpeedMin = 1.0f;
-    constexpr float CameraPanSpeedMax = 3.0f;
+    constexpr float CameraPanSpeedMin = 1.5f;
+    constexpr float CameraPanSpeedMax = 2.0f;
     constexpr float CameraPanAccelerationDuration = 1.0f / 2.0f;
     constexpr float CameraPanAccelerationStartTime = 0.25f;
 
@@ -62,15 +62,17 @@ namespace HF_Player_Private
           (timeSinceRightStickInput - CameraPanAccelerationStartTime) * CameraPanAccelerationDuration;
         float const cameraPanSpeed = YK_LerpClamped(CameraPanSpeedMin, CameraPanSpeedMax, cameraPanLerp);
 
-        p_camera.m_transform.m_orientation *=
-          YK_Quaternion(YK_Vector3f::Up(), -rightStick.m_x * deltaTime * cameraPanSpeed);
+        p_camera.m_transform.m_orientation =
+          YK_Quaternion(YK_Vector3f::Up(), -rightStick.m_x * deltaTime * cameraPanSpeed)
+          * p_camera.m_transform.m_orientation;
+        p_camera.m_transform.m_orientation *= YK_Quaternion(YK_Vector3f::Right(), rightStick.m_y * deltaTime);
 
-        YK_Vector3f const cameraForward2D = p_camera.m_transform.Forward2D();
+        YK_Vector3f cameraForward = p_camera.m_transform.Forward();
         p_camera.m_transform.m_position = p_playerTransform.m_position;
-        p_camera.m_transform.m_position += YK_Vector3f::Up() * CameraHeight;
-        p_camera.m_transform.m_position += cameraForward2D * CameraDistance;
+        p_camera.m_transform.m_position += cameraForward * CameraDistance;
 
-        return cameraForward2D;
+        cameraForward.y = 0.0f;
+        return YK_Vector::GetNormalized(cameraForward);
     }
 
 } // namespace HF_Player_Private
@@ -134,8 +136,14 @@ void HF_Player::Update()
 
     HIDra::Vec2f leftStick = HIDra::GetAxis2D(HIDra::AID_STICK_L);
 
+    YK_Vector3f const previousPosition = playerTransform->m_position;
     playerTransform->m_position +=
       (cameraForward2D * -leftStick.m_y + cameraRight * leftStick.m_x) * YK_Time::DeltaTime() * 5.0f;
+
+    if (YK_Vector::SqrMagnitude(previousPosition - playerTransform->m_position) > 0.0f)
+    {
+        playerTransform->m_orientation = YK_Matrix::LookAt(playerTransform->m_position, previousPosition);
+    }
 
     // Very bad animation swap test
     static float hammerTime = 0.0f;
