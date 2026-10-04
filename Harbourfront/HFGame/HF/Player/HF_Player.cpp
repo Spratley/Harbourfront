@@ -6,6 +6,7 @@
 #include "YK/IO/File/YK_FilePath.h"
 #include "YK/Libraries/Zen/Zen_Garden.h"
 #include "YK/Math/YK_MathUtils.h"
+#include "YK/Math/YK_MatrixMath.h"
 #include "YK/Math/YK_VectorMath.h"
 #include "YK/Time/YK_Time.h"
 #include "YK/Types/Math/YK_Quaternion.h"
@@ -14,13 +15,14 @@
 #include "CG/CG_RenderModule.h"
 #include "CG/Camera/CG_CameraComponent.h"
 #include "CG/ECS/CG_Components.h"
-#include "CG/Renderer/CG_RenderBinding.h"
 #include "CG/Resource/Animation/CG_Animation.h"
 #include "CG/Resource/Material/CG_Material.h"
 #include "CG/Resource/Mesh/CG_Mesh.h"
 #include "CG/Resource/Skeleton/CG_Skeleton.h"
 
 #include "AM/ECS/AM_AnimationComponent.h"
+#include "AM/PoseSampler/AM_AnimationPoseSampler.h"
+#include "AM/PoseSampler/AM_LerpPoseSampler.h"
 
 #include "EN/Libraries/HIDra/HIDra.h"
 #include "EN/Libraries/HIDra/HIDraEnums.h"
@@ -31,8 +33,8 @@
 
 namespace HF_Player_Private
 {
-    CG_Animation const* IdleAnimation;
-    CG_Animation const* HammerJumpAnimation;
+    AM_AnimationPoseSampler IdlePoseSampler;
+    AM_AnimationPoseSampler WalkPoseSampler;
 
     // This should be ideally loaded from some data path
     // I don't have a mechanism to do that in YakuEn yet
@@ -44,13 +46,15 @@ namespace HF_Player_Private
     constexpr float CameraPanAccelerationDuration = 1.0f / 2.0f;
     constexpr float CameraPanAccelerationStartTime = 0.25f;
 
-    YK_Vector3f UpdateCamera(CG_CameraComponent& p_camera, YK_TransformComponent& p_playerTransform)
+    YK_Vector3f UpdateCamera(CG_CameraComponent& p_camera)
     {
         HIDra::Vec2f rightStick = HIDra::GetAxis2D(HIDra::AID_STICK_R);
         // TODO: Integrate "Time since input started" directly into HIDra
         static float timeSinceRightStickInput = 0.0f;
         float const deltaTime = YK_Time::DeltaTime();
-        if (rightStick.m_x == 0.0f) // Float comparisons :')
+        // Float comparisons :')
+        // Technically strongly defined for 0.0f by IEEE standard
+        if (rightStick.m_x == 0.0f)
         {
             timeSinceRightStickInput = 0.0f;
         }
@@ -67,11 +71,7 @@ namespace HF_Player_Private
           * p_camera.m_transform.m_orientation;
         p_camera.m_transform.m_orientation *= YK_Quaternion(YK_Vector3f::Right(), rightStick.m_y * deltaTime);
 
-        YK_Vector3f cameraForward = p_camera.m_transform.Forward();
-        p_camera.m_transform.m_position = p_playerTransform.m_position;
-        p_camera.m_transform.m_position += cameraForward * CameraDistance;
-
-        cameraForward.y = 0.0f;
+        YK_Vector3f cameraForward = p_camera.m_transform.Forward2D();
         return YK_Vector::GetNormalized(cameraForward);
     }
 
@@ -99,10 +99,15 @@ HF_Player::HF_Player()
     poseComponent.m_pose.resize(skeletalMesh.m_skeleton->m_bones.size());
 
     AM_AnimationComponent animationComponent;
-    HF_Player_Private::IdleAnimation = &assetManager.GetAsset<CG_Animation>(YK_FilePath("Animations/Idle.YKA"));
-    HF_Player_Private::HammerJumpAnimation =
-      &assetManager.GetAsset<CG_Animation>(YK_FilePath("Animations/Hammer_Jump.YKA"));
-    animationComponent.m_animation = HF_Player_Private::IdleAnimation;
+
+    HF_Player_Private::IdlePoseSampler =
+      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animations/Idle.YKA")));
+
+    HF_Player_Private::WalkPoseSampler =
+      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animations/Walk_F.YKA")));
+
+    animationComponent.m_poseSampler =
+      AM_LerpPoseSampler(&HF_Player_Private::IdlePoseSampler, &HF_Player_Private::WalkPoseSampler);
 
     CG_CameraComponent playerCamera;
     playerCamera.m_transform.m_position = YK_Vector3f::Up();
@@ -131,34 +136,22 @@ void HF_Player::Update()
     YK_TransformComponent* const playerTransform = m_playerEntity.GetComponent<YK_TransformComponent>();
     AM_AnimationComponent* const animationComponent = m_playerEntity.GetComponent<AM_AnimationComponent>();
 
-    YK_Vector3f const cameraForward2D = HF_Player_Private::UpdateCamera(*camera, *playerTransform);
+    YK_Vector3f const cameraForward2D = HF_Player_Private::UpdateCamera(*camera);
     YK_Vector3f const cameraRight = YK_Vector::Cross(YK_Vector3f::Up(), cameraForward2D);
 
     HIDra::Vec2f leftStick = HIDra::GetAxis2D(HIDra::AID_STICK_L);
 
     YK_Vector3f const previousPosition = playerTransform->m_position;
+    YK_Vector3f const previousHammerPosition = previousPosition + (playerTransform->Forward2D() * -2.5f);
+
     playerTransform->m_position +=
       (cameraForward2D * -leftStick.m_y + cameraRight * leftStick.m_x) * YK_Time::DeltaTime() * 5.0f;
+    playerTransform->m_orientation = YK_Matrix::LookAt(playerTransform->m_position, previousHammerPosition);
 
-    if (YK_Vector::SqrMagnitude(previousPosition - playerTransform->m_position) > 0.0f)
-    {
-        playerTransform->m_orientation = YK_Matrix::LookAt(playerTransform->m_position, previousPosition);
-    }
+    animationComponent->m_poseSampler.SetSampleFactor(YK_Vector::Magnitude(YK_Vector2f(leftStick.m_x, leftStick.m_y)));
 
-    // Very bad animation swap test
-    static float hammerTime = 0.0f;
-    if (animationComponent->m_animation == HF_Player_Private::HammerJumpAnimation)
-    {
-        hammerTime += YK_Time::DeltaTime();
-        if (hammerTime > animationComponent->m_animation->m_duration)
-        {
-            hammerTime = 0.0f;
-            animationComponent->m_animation = HF_Player_Private::IdleAnimation;
-        }
-    }
-    else if (HIDra::GetButtonDown(HIDra::BID_SOUTH))
-    {
-        animationComponent->m_animation = HF_Player_Private::HammerJumpAnimation;
-        animationComponent->m_sampleTime = 0.0f;
-    }
+    // Update camera position last to prevent jitter
+    YK_Vector3f cameraForward = camera->m_transform.Forward();
+    camera->m_transform.m_position = playerTransform->m_position;
+    camera->m_transform.m_position += cameraForward * HF_Player_Private::CameraDistance;
 }
