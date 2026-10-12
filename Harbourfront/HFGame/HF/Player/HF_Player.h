@@ -14,4 +14,6 @@ public:
 
 private:
     Zen::Entity m_playerEntity;
+
+    YK_Vector3f m_hammerPosition;
 };
