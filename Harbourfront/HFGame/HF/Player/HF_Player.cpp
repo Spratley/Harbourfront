@@ -26,12 +26,14 @@
 #include "AM/PoseSampler/AM_BlendPoseSampler.h"
 #include "AM/PoseSampler/AM_LerpPoseSampler.h"
 #include "AM/PoseSampler/AM_MaskedPoseSampler.h"
-#include "AM/Types/AM_PoseMask.h"
+#include "AM/Resource/AM_BoneMask.h"
 
 #include "EN/Libraries/HIDra/HIDra.h"
 #include "EN/Libraries/HIDra/HIDraEnums.h"
 #include "EN/Libraries/HIDra/HIDraTypes.h"
 #include "EN/YakuEngine.h"
+
+#include "HF/Player/HF_PlayerComponent.h"
 
 #include <utility>
 
@@ -114,20 +116,20 @@ HF_Player::HF_Player()
 
     // Load Pose Samplers
     HF_Player_Private::IdlePoseSampler =
-      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animations/Idle.YKA")));
+      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/Idle.YKA")));
     HF_Player_Private::WalkPoseSampler =
-      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animations/Walk_F.YKA")));
+      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/Run_F.YKA")));
 
     HF_Player_Private::HammerPoseSamplers[0] =
-      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animations/P_H_L.YKA")));
+      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/P_H_L.YKA")));
     HF_Player_Private::HammerPoseSamplers[1] =
-      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animations/P_H_BL.YKA")));
+      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/P_H_BL.YKA")));
     HF_Player_Private::HammerPoseSamplers[2] =
-      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animations/P_H_Back.YKA")));
+      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/P_H_Back.YKA")));
     HF_Player_Private::HammerPoseSamplers[3] =
-      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animations/P_H_BR.YKA")));
+      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/P_H_BR.YKA")));
     HF_Player_Private::HammerPoseSamplers[4] =
-      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animations/P_H_R.YKA")));
+      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/P_H_R.YKA")));
 
     // End Load Pose Samplers
 
@@ -143,30 +145,27 @@ HF_Player::HF_Player()
     HF_Player_Private::HammerBlendPoseSampler.AddSampler(&HF_Player_Private::HammerPoseSamplers[4], 1.0f);
     // End Setup Intermediary Pose Samplers
 
-    AM_PoseMask armsAndHammerMask;
-    armsAndHammerMask.Enable(1);
-    armsAndHammerMask.Enable(2);
-    armsAndHammerMask.Enable(3);
-    armsAndHammerMask.Enable(4);
-    armsAndHammerMask.Enable(20);
-    armsAndHammerMask.Enable(21);
-    armsAndHammerMask.Enable(22);
-
+    YK_FilePath armsAndHammerMaskPath = YK_FilePath("Animation/BoneMasks/Debugger_ArmsAndHammer.AMBoneMask");
+    AM_BoneMask armsAndHammerMask = assetManager.GetAsset<AM_BoneMask>(armsAndHammerMaskPath);
     animationComponent.m_poseSampler = AM_MaskedPoseSampler(armsAndHammerMask,
                                                             &HF_Player_Private::HammerBlendPoseSampler,
                                                             &HF_Player_Private::MovementPoseSampler);
+    assetManager.GetAssetStorage<AM_BoneMask>().UnloadAsset(armsAndHammerMaskPath);
 
     CG_CameraComponent playerCamera;
     playerCamera.m_transform.m_position = YK_Vector3f::Up();
 
-    m_hammerPosition = playerTransform.m_position + playerTransform.Forward2D() * HF_Player_Private::HammerDistance;
+    HF_PlayerComponent playerComponent{
+        .m_hammerPosition = playerTransform.m_position + playerTransform.Forward2D() * HF_Player_Private::HammerDistance
+    };
 
     m_playerEntity = entityGarden.Spawn(std::move(playerTransform),
                                         std::move(skeletalMesh),
                                         std::move(rendererComponent),
                                         std::move(poseComponent),
                                         std::move(animationComponent),
-                                        std::move(playerCamera));
+                                        std::move(playerCamera),
+                                        std::move(playerComponent));
 
     engine.GetModules().GetRenderModule().SetActiveCamera(m_playerEntity);
 }
@@ -184,6 +183,7 @@ void HF_Player::Update()
     CG_CameraComponent* const camera = m_playerEntity.GetComponent<CG_CameraComponent>();
     YK_TransformComponent* const playerTransform = m_playerEntity.GetComponent<YK_TransformComponent>();
     AM_AnimationComponent* const animationComponent = m_playerEntity.GetComponent<AM_AnimationComponent>();
+    HF_PlayerComponent* const playerComponent = m_playerEntity.GetComponent<HF_PlayerComponent>();
 
     YK_Vector3f const cameraForward2D = HF_Player_Private::UpdateCamera(*camera);
     YK_Vector3f const cameraRight = YK_Vector::Cross(YK_Vector3f::Up(), cameraForward2D);
@@ -204,8 +204,10 @@ void HF_Player::Update()
     YK_Vector3f const previousPosition = playerTransform->m_position;
     playerTransform->m_position += worldDesiredMovement * YK_Time::DeltaTime() * 8.0f;
 
-    YK_Vector3f const positionToHammer = YK_Vector::GetNormalized(playerTransform->m_position - m_hammerPosition);
-    m_hammerPosition = playerTransform->m_position + positionToHammer * HF_Player_Private::HammerDistance;
+    YK_Vector3f const positionToHammer =
+      YK_Vector::GetNormalized(playerTransform->m_position - playerComponent->m_hammerPosition);
+    playerComponent->m_hammerPosition =
+      playerTransform->m_position + positionToHammer * HF_Player_Private::HammerDistance;
 
     if (!YK_Vector::ApproximatelyEqual(worldDesiredMovement, YK_Vector3f::Zero()))
     {
