@@ -12,6 +12,7 @@
 #include "YK/Types/Other/YK_DeferredConstructible.h"
 
 #include "CG/ECS/CG_Components.h"
+#include "CG/Resource/CG_ResourceHandles.h"
 #include "CG/Resource/Material/CG_Material.h"
 #include "CG/Resource/Mesh/CG_Mesh.h"
 #include "CG/Resource/Mesh/CG_MeshFactory.h"
@@ -27,10 +28,15 @@
 #include <ctime>
 #include <utility>
 
+#include "EN/Libraries/HIDra/HIDra.h"
+#include "HF/HF_Test.h"
+
 // Temp
 CG_Mesh g_quadMesh;
 
 YK_DeferredConstructible<HF_Player> HF_Game::m_player;
+
+std::vector<Zen::Entity> g_balls;
 
 void HF_Game::Init(YK_Core& p_engine)
 {
@@ -43,8 +49,7 @@ void HF_Game::Init(YK_Core& p_engine)
     // Gather Assets for Spawning
     g_quadMesh = CG_MeshFactory::Quad();
 
-    // CG_Material const& heartMaterial = assetManager.GetAsset<CG_Material>(YK_FilePath("Materials/Main.YKM"));
-    CG_Material const& groundMaterial = assetManager.GetAsset<CG_Material>(YK_FilePath("Materials/Ground.YKM"));
+    CG_MaterialHandle groundMaterial = assetManager.GetAsset<CG_Material>(YK_FilePath("Materials/Ground.YKM"));
 
     std::srand(static_cast<unsigned int>(time(NULL)));
 
@@ -54,8 +59,8 @@ void HF_Game::Init(YK_Core& p_engine)
     groundTransform->m_orientation = YK_Quaternion(YK_Vector3f::Right(), angle);
     groundTransform->m_scale = YK_Vector3f(30.0f);
 
-    groundPlane.GetComponent<CG_MeshComponent>()->m_mesh = &g_quadMesh;
-    groundPlane.GetComponent<CG_RendererComponent>()->m_material = &groundMaterial;
+    groundPlane.GetComponent<CG_MeshComponent>()->m_mesh = g_quadMesh.GetHandle();
+    groundPlane.GetComponent<CG_RendererComponent>()->m_material = groundMaterial;
 
     // Spawn ground collider
     YK_Transform groundCollider;
@@ -64,8 +69,39 @@ void HF_Game::Init(YK_Core& p_engine)
     entityGarden.Spawn(
       std::move(groundCollider),
       PP_RigidBodyComponent{ new JPH::BoxShape(JPH::Vec3(100.0f, 1.0f, 100.0f)), groundCollider, PP_BodyType::Static });
+
+    CG_Mesh testMesh = CG_MeshFactory::Quad();
+    assetManager.GetAssetStorage<CG_Mesh>().InsertAsset(std::move(testMesh), YK_UID("Quad"));
+
+    assetManager.CleanupGarbage();
 }
 
-void HF_Game::Update(YK_Core& /*p_engine*/) { m_player->Update(); }
+void HF_Game::Update(YK_Core& p_engine)
+{
+    m_player->Update();
 
-void HF_Game::ShutDown(YK_Core& /*p_engine*/) { m_player.Destruct(); }
+    if (HIDra::GetButtonDown(HIDra::BID_NORTH))
+    {
+        if (g_balls.size() > 0)
+        {
+            p_engine.GetZenGarden().Destroy(g_balls[0]);
+            g_balls.pop_back();
+        }
+        g_balls.push_back(HF_TestBallSpawner::Spawn());
+    }
+
+    for (auto ball : g_balls)
+    {
+        HF_TestBallSpawner::Synchronize(ball);
+    }
+}
+
+void HF_Game::ShutDown(YK_Core& p_engine)
+{
+    for (auto g_ball : g_balls)
+    {
+        p_engine.GetZenGarden().Destroy(g_ball);
+    }
+
+    m_player.Destruct();
+}

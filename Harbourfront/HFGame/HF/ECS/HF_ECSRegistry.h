@@ -2,9 +2,13 @@
 
 #include "EN/ECS/EN_ECSRegistry.h"
 
+#include "HF/HF_Test.h"
+#include "HF/Player/HF_HammerComponent.h"
+#include "HF/Player/HF_PlayerComponent.h"
+
 namespace HF_ECSRegistry
 {
-    using ComponentTypes = Zen::TypeList<>;
+    using ComponentTypes = Zen::TypeList<HF_TestConstraintComponent, HF_HammerComponent, HF_PlayerComponent>;
     using SystemTypes = Zen::TypeList<>;
 } // namespace HF_ECSRegistry
 

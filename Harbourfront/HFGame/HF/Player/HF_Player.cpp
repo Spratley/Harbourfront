@@ -1,9 +1,11 @@
 #include "PCH/HFGame_PCH.h"
 #include "HF_Player.h"
 
+#include "YK/Debugging/YK_Assert.h"
 #include "YK/ECS/Components/YK_TransformComponent.h"
 #include "YK/IO/Asset/YK_AssetManager.h"
 #include "YK/IO/File/YK_FilePath.h"
+#include "YK/Libraries/Zen/Entity/Zen_Entity.h"
 #include "YK/Libraries/Zen/Zen_Garden.h"
 #include "YK/Math/YK_AngleMath.h"
 #include "YK/Math/YK_MathUtils.h"
@@ -27,18 +29,27 @@
 #include "AM/PoseSampler/AM_LerpPoseSampler.h"
 #include "AM/PoseSampler/AM_MaskedPoseSampler.h"
 #include "AM/Resource/AM_BoneMask.h"
+#include "AM/Resource/AM_ResourceHandles.h"
+
+#include <Jolt/Jolt.h>
+#include "PP/Libraries/Jolt/Physics/Body/BodyInterface.h"
+#include "PP/PP_PhysicsModule.h"
 
 #include "EN/Libraries/HIDra/HIDra.h"
 #include "EN/Libraries/HIDra/HIDraEnums.h"
 #include "EN/Libraries/HIDra/HIDraTypes.h"
 #include "EN/YakuEngine.h"
 
+#include "HF/Player/HF_HammerComponent.h"
 #include "HF/Player/HF_PlayerComponent.h"
 
 #include <utility>
 
 namespace HF_Player_Private
 {
+    // TEMP
+    Zen::Entity DebugEntity;
+
     constexpr float RateOfTurn = YK_ToRadians(3.0f * 90.0f);
 
     constexpr float HammerDistance = -2.5f;
@@ -97,17 +108,24 @@ HF_Player::HF_Player()
     Zen::Garden& entityGarden = engine.GetZenGarden();
     YK_AssetManager& assetManager = engine.GetAssetManager();
 
+    // Spawn Debug Entity
+    YK_ASSERT(!HF_Player_Private::DebugEntity.IsValid(), "Two players spawned!");
+    HF_Player_Private::DebugEntity = entityGarden.Spawn(
+      YK_TransformComponent{},
+      CG_RendererComponent{ .m_material = assetManager.GetAsset<CG_Material>(YK_FilePath("Materials/Error.YKM")) },
+      CG_MeshComponent{ .m_mesh = assetManager.GetAsset<CG_Mesh>(YK_FilePath("Models/Cube.obj")) });
+
     // Spawn player
     YK_TransformComponent playerTransform;
     playerTransform.m_position = YK_Vector3f{ 0.0f, 0.0f, -5.0f };
 
     YK_FilePath playerMeshPath = YK_FilePath("Models/Debugger.glb");
     CG_SkeletalMeshComponent skeletalMesh;
-    skeletalMesh.m_mesh = &assetManager.GetAsset<CG_Mesh>(playerMeshPath);
-    skeletalMesh.m_skeleton = &assetManager.GetAsset<CG_Skeleton>(playerMeshPath);
+    skeletalMesh.m_mesh = assetManager.GetAsset<CG_Mesh>(playerMeshPath);
+    skeletalMesh.m_skeleton = assetManager.GetAsset<CG_Skeleton>(playerMeshPath);
 
     CG_RendererComponent rendererComponent;
-    rendererComponent.m_material = &assetManager.GetAsset<CG_Material>(YK_FilePath("Materials/MainSkeletal.YKM"));
+    rendererComponent.m_material = assetManager.GetAsset<CG_Material>(YK_FilePath("Materials/MainSkeletal.YKM"));
 
     CG_PoseComponent poseComponent;
     poseComponent.m_pose.resize(skeletalMesh.m_skeleton->m_bones.size());
@@ -116,20 +134,20 @@ HF_Player::HF_Player()
 
     // Load Pose Samplers
     HF_Player_Private::IdlePoseSampler =
-      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/Idle.YKA")));
+      AM_AnimationPoseSampler(assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/Idle.YKA")));
     HF_Player_Private::WalkPoseSampler =
-      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/Run_F.YKA")));
+      AM_AnimationPoseSampler(assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/Run_F.YKA")));
 
     HF_Player_Private::HammerPoseSamplers[0] =
-      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/P_H_L.YKA")));
+      AM_AnimationPoseSampler(assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/P_H_L.YKA")));
     HF_Player_Private::HammerPoseSamplers[1] =
-      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/P_H_BL.YKA")));
+      AM_AnimationPoseSampler(assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/P_H_BL.YKA")));
     HF_Player_Private::HammerPoseSamplers[2] =
-      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/P_H_Back.YKA")));
+      AM_AnimationPoseSampler(assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/P_H_Back.YKA")));
     HF_Player_Private::HammerPoseSamplers[3] =
-      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/P_H_BR.YKA")));
+      AM_AnimationPoseSampler(assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/P_H_BR.YKA")));
     HF_Player_Private::HammerPoseSamplers[4] =
-      AM_AnimationPoseSampler(&assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/P_H_R.YKA")));
+      AM_AnimationPoseSampler(assetManager.GetAsset<CG_Animation>(YK_FilePath("Animation/Clips/P_H_R.YKA")));
 
     // End Load Pose Samplers
 
@@ -146,11 +164,10 @@ HF_Player::HF_Player()
     // End Setup Intermediary Pose Samplers
 
     YK_FilePath armsAndHammerMaskPath = YK_FilePath("Animation/BoneMasks/Debugger_ArmsAndHammer.AMBoneMask");
-    AM_BoneMask armsAndHammerMask = assetManager.GetAsset<AM_BoneMask>(armsAndHammerMaskPath);
-    animationComponent.m_poseSampler = AM_MaskedPoseSampler(armsAndHammerMask,
+    AM_BoneMaskHandle armsAndHammerMask = assetManager.GetAsset<AM_BoneMask>(armsAndHammerMaskPath);
+    animationComponent.m_poseSampler = AM_MaskedPoseSampler(*armsAndHammerMask,
                                                             &HF_Player_Private::HammerBlendPoseSampler,
                                                             &HF_Player_Private::MovementPoseSampler);
-    assetManager.GetAssetStorage<AM_BoneMask>().UnloadAsset(armsAndHammerMaskPath);
 
     CG_CameraComponent playerCamera;
     playerCamera.m_transform.m_position = YK_Vector3f::Up();
@@ -159,13 +176,16 @@ HF_Player::HF_Player()
         .m_hammerPosition = playerTransform.m_position + playerTransform.Forward2D() * HF_Player_Private::HammerDistance
     };
 
+    HF_HammerComponent hammerComponent;
+
     m_playerEntity = entityGarden.Spawn(std::move(playerTransform),
                                         std::move(skeletalMesh),
                                         std::move(rendererComponent),
                                         std::move(poseComponent),
                                         std::move(animationComponent),
                                         std::move(playerCamera),
-                                        std::move(playerComponent));
+                                        std::move(playerComponent),
+                                        std::move(hammerComponent));
 
     engine.GetModules().GetRenderModule().SetActiveCamera(m_playerEntity);
 }
@@ -180,6 +200,20 @@ HF_Player::~HF_Player()
 
 void HF_Player::Update()
 {
+#pragma region Temp
+    HF_HammerComponent* const hammerComponent = m_playerEntity.GetComponent<HF_HammerComponent>();
+    YK_TransformComponent* const debugTransform = HF_Player_Private::DebugEntity.GetComponent<YK_TransformComponent>();
+
+    JPH::BodyInterface& bodyInterface = PP_PhysicsModule::GetPhysicsInstance().GetJoltInstance().GetBodyInterface();
+    JPH::RVec3 position;
+    JPH::Quat orientation;
+
+    bodyInterface.GetPositionAndRotation(hammerComponent->m_hammerBody, position, orientation);
+    debugTransform->m_position = YK_Vector3f{ position.GetX(), position.GetY(), position.GetZ() };
+    debugTransform->m_orientation =
+      YK_Quaternion{ orientation.GetX(), orientation.GetY(), orientation.GetZ(), orientation.GetZ() };
+#pragma endregion
+
     CG_CameraComponent* const camera = m_playerEntity.GetComponent<CG_CameraComponent>();
     YK_TransformComponent* const playerTransform = m_playerEntity.GetComponent<YK_TransformComponent>();
     AM_AnimationComponent* const animationComponent = m_playerEntity.GetComponent<AM_AnimationComponent>();
