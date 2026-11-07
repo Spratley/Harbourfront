@@ -28,15 +28,10 @@
 #include <ctime>
 #include <utility>
 
-#include "EN/Libraries/HIDra/HIDra.h"
-#include "HF/HF_Test.h"
-
 // Temp
 CG_Mesh g_quadMesh;
 
 YK_DeferredConstructible<HF_Player> HF_Game::m_player;
-
-std::vector<Zen::Entity> g_balls;
 
 void HF_Game::Init(YK_Core& p_engine)
 {
@@ -76,32 +71,6 @@ void HF_Game::Init(YK_Core& p_engine)
     assetManager.CleanupGarbage();
 }
 
-void HF_Game::Update(YK_Core& p_engine)
-{
-    m_player->Update();
+void HF_Game::Update(YK_Core& /*p_engine*/) { m_player->Update(); }
 
-    if (HIDra::GetButtonDown(HIDra::BID_NORTH))
-    {
-        if (g_balls.size() > 0)
-        {
-            p_engine.GetZenGarden().Destroy(g_balls[0]);
-            g_balls.pop_back();
-        }
-        g_balls.push_back(HF_TestBallSpawner::Spawn());
-    }
-
-    for (auto ball : g_balls)
-    {
-        HF_TestBallSpawner::Synchronize(ball);
-    }
-}
-
-void HF_Game::ShutDown(YK_Core& p_engine)
-{
-    for (auto g_ball : g_balls)
-    {
-        p_engine.GetZenGarden().Destroy(g_ball);
-    }
-
-    m_player.Destruct();
-}
+void HF_Game::ShutDown(YK_Core& /*p_engine*/) { m_player.Destruct(); }
